@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.secogroupe.app.entity.User;
+import com.secogroupe.app.entity.UserStatus;
 import com.secogroupe.app.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -38,13 +39,14 @@ public class CustomUserDetailsService implements UserDetailsService {
             });
         });
 
+        boolean active = user.isEnabled() && user.getStatus() == UserStatus.ACTIVE;
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),
-                user.isEnabled(),
+                active,
                 true,
                 true,
-                true,
+                user.getStatus() != UserStatus.SUSPENDED,
                 authorities
         );
     }

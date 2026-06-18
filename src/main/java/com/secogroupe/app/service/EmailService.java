@@ -8,7 +8,9 @@ import org.springframework.stereotype.Service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
@@ -21,7 +23,22 @@ public class EmailService {
     @Value("${app.base-url}")
     private String baseUrl;
 
+    @Value("${app.mail.console-mode:false}")
+    private boolean consoleModeEnabled;
+
     public void sendVerificationEmail(String toEmail, String username, String otpCode, String linkToken) {
+        String verificationLink = baseUrl + "/auth/v1/verify-email?token=" + linkToken;
+
+        if (consoleModeEnabled) {
+            log.info("╔══════════════ EMAIL DE VÉRIFICATION [mode console] ══════════════╗");
+            log.info("  À           : {}", toEmail);
+            log.info("  Utilisateur : {}", username);
+            log.info("  Code OTP    : {}", otpCode);
+            log.info("  Lien        : {}", verificationLink);
+            log.info("╚══════════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -29,8 +46,6 @@ public class EmailService {
             helper.setFrom(fromAddress);
             helper.setTo(toEmail);
             helper.setSubject("Vérifiez votre adresse email — Secogroupe");
-
-            String verificationLink = baseUrl + "/auth/verify-email?token=" + linkToken;
 
             String html = """
                     <!DOCTYPE html>

@@ -1,10 +1,10 @@
 package com.secogroupe.app.dto;
 
+import com.secogroupe.app.entity.EmployeeStatus;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.Data;
-
 
 @Data
 public class EmployeeRequest {
@@ -15,12 +15,16 @@ public class EmployeeRequest {
     @NotBlank
     private String lastName;
 
+    private String email;
+    private String phone;
+
     @NotBlank
     private String position;
 
-    @NotNull
-    @Positive
+    private String department;
+
     private Double salary;
 
-    // getters/setters
+    @NotNull
+    private EmployeeStatus status;
 }
