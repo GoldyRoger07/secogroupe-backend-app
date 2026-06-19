@@ -2,7 +2,8 @@ HELP.md
 target/
 
 ### Secrets — ne jamais commiter ###
-.env.properties
+.env.prod.properties
+.env.dev.properties
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

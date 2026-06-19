@@ -2,6 +2,7 @@ package com.secogroupe.app.security;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -28,6 +29,14 @@ import lombok.RequiredArgsConstructor;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    @Value("${website.url}")
+    private String websiteUrl;
+
+    @Value("${app.frontend.url}")
+    private String appFrontendUrl;
+
+
 
     private final JwtFilter jwtFilter;
     private final CustomUserDetailsService userDetailsService;
@@ -61,10 +70,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
-                "http://localhost:4200",
-                "http://localhost:3000",
-                "https://www.secogroupe.com",
-                "https://secogroupe.com"
+                appFrontendUrl,
+                websiteUrl
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With", "Cache-Control"));
