@@ -2,7 +2,9 @@ package com.secogroupe.app.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -14,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.secogroupe.app.dto.ImportResult;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.dto.PermissionRequest;
 import com.secogroupe.app.dto.PermissionResponse;
@@ -65,5 +69,39 @@ public class PermissionController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         permissionService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ──────────────── Export ────────────────
+
+    @PreAuthorize("hasAuthority('READ_PERMISSION')")
+    @GetMapping("/export/csv")
+    public ResponseEntity<byte[]> exportCsv() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"permissions.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(permissionService.exportCsv());
+    }
+
+    @PreAuthorize("hasAuthority('READ_PERMISSION')")
+    @GetMapping("/export/json")
+    public ResponseEntity<byte[]> exportJson() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"permissions.json\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(permissionService.exportJson());
+    }
+
+    // ──────────────── Import ────────────────
+
+    @PreAuthorize("hasAuthority('CREATE_PERMISSION')")
+    @PostMapping("/import/csv")
+    public ResponseEntity<ImportResult> importCsv(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(permissionService.importCsv(file));
+    }
+
+    @PreAuthorize("hasAuthority('CREATE_PERMISSION')")
+    @PostMapping("/import/json")
+    public ResponseEntity<ImportResult> importJson(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(permissionService.importJson(file));
     }
 }

@@ -1,9 +1,16 @@
 package com.secogroupe.app.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.dto.RoleRequest;
 import com.secogroupe.app.dto.RoleResponse;
@@ -29,6 +38,7 @@ public class RoleService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final RoleMapper roleMapper;
+    private final ObjectMapper objectMapper;
 
     public PageResponse<RoleResponse> getAll(int page, int size, String sortField, String sortOrder, String filter) {
         Sort sort = (sortField != null && !sortField.isBlank())
@@ -90,9 +100,44 @@ public class RoleService {
         return roleRepository.findAll().stream().map(roleMapper::toResponse).toList();
     }
 
+    // ──────────────── Export ────────────────
+
+    public byte[] exportCsv() {
+        List<Role> all = roleRepository.findAll(Sort.by(Sort.Direction.ASC, "name"));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (CSVPrinter printer = new CSVPrinter(
+                new OutputStreamWriter(baos, StandardCharsets.UTF_8),
+                CSVFormat.DEFAULT.builder()
+                        .setHeader("id", "name", "description", "permissions", "createdAt")
+                        .build())) {
+            for (Role r : all) {
+                String perms = r.getPermissions() != null
+                        ? r.getPermissions().stream().map(Permission::getName).sorted().collect(Collectors.joining(";"))
+                        : "";
+                printer.printRecord(
+                        r.getId(), r.getName(), r.getDescription(), perms,
+                        r.getCreatedAt() != null ? r.getCreatedAt().toString() : "");
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Erreur export CSV", ex);
+        }
+        return baos.toByteArray();
+    }
+
+    public byte[] exportJson() {
+        List<RoleResponse> all = roleRepository.findAll(Sort.by(Sort.Direction.ASC, "name"))
+                .stream().map(roleMapper::toResponse).toList();
+        try {
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(all);
+        } catch (JsonProcessingException ex) {
+            throw new RuntimeException("Erreur export JSON", ex);
+        }
+    }
+
+    // ──────────────── private helpers ────────────────
+
     private Set<Permission> resolvePermissions(List<Long> ids) {
         if (ids == null || ids.isEmpty()) return Set.of();
-        Set<Permission> permissions = new HashSet<>(permissionRepository.findAllById(ids));
-        return permissions;
+        return new HashSet<>(permissionRepository.findAllById(ids));
     }
 }

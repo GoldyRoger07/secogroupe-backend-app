@@ -2,6 +2,7 @@ package com.secogroupe.app.service;
 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
@@ -25,8 +26,9 @@ public class AuthService {
     private final LoginHistoryService loginHistoryService;
 
     public AuthResponse login(AuthRequest request, String clientIp, String device) {
+        Authentication authentication;
         try {
-            authenticationManager.authenticate(
+            authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (Exception e) {
             loginHistoryService.record(request.getUsername(), clientIp, device, false);
@@ -35,7 +37,8 @@ public class AuthService {
 
         loginHistoryService.record(request.getUsername(), clientIp, device, true);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
+        // Le principal est déjà chargé par DaoAuthenticationProvider — pas de 2e SELECT
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String accessToken = jwtService.generateToken(userDetails);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(request.getUsername());
 

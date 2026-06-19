@@ -1,5 +1,6 @@
 package com.secogroupe.app.controller;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.secogroupe.app.dto.EmployeeRequest;
 import com.secogroupe.app.dto.EmployeeResponse;
+import com.secogroupe.app.dto.ImportResult;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.service.EmployeeService;
 
@@ -67,5 +69,39 @@ public class EmployeeController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ──────────────── Export ────────────────
+
+    @PreAuthorize("hasAuthority('READ_EMPLOYEE')")
+    @GetMapping("/export/csv")
+    public ResponseEntity<byte[]> exportCsv() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"employees.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(service.exportCsv());
+    }
+
+    @PreAuthorize("hasAuthority('READ_EMPLOYEE')")
+    @GetMapping("/export/json")
+    public ResponseEntity<byte[]> exportJson() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"employees.json\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(service.exportJson());
+    }
+
+    // ──────────────── Import ────────────────
+
+    @PreAuthorize("hasAuthority('CREATE_EMPLOYEE')")
+    @PostMapping("/import/csv")
+    public ResponseEntity<ImportResult> importCsv(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(service.importCsv(file));
+    }
+
+    @PreAuthorize("hasAuthority('CREATE_EMPLOYEE')")
+    @PostMapping("/import/json")
+    public ResponseEntity<ImportResult> importJson(@RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(service.importJson(file));
     }
 }

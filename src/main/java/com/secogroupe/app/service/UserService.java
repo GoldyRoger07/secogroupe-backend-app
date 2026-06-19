@@ -1,10 +1,20 @@
 package com.secogroupe.app.service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +23,11 @@ import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.secogroupe.app.dto.ImportResult;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.dto.RegisterRequest;
 import com.secogroupe.app.dto.UserRequest;
@@ -42,6 +56,7 @@ public class UserService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final ObjectMapper objectMapper;
 
     // ──────────────── Auth methods ────────────────
 
@@ -212,5 +227,108 @@ public class UserService {
         } catch (MailException e) {
             log.error("Échec de l'envoi du mail de vérification à {} : {}", user.getEmail(), e.getMessage());
         }
+    }
+
+    // ──────────────── Export ────────────────
+
+    public byte[] exportCsv() {
+        List<User> all = userRepository.findAll(Sort.by(Sort.Direction.ASC, "username"));
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (CSVPrinter printer = new CSVPrinter(
+                new OutputStreamWriter(baos, StandardCharsets.UTF_8),
+                CSVFormat.DEFAULT.builder()
+                        .setHeader("id", "username", "email", "roleName", "status", "createdAt")
+                        .build())) {
+            for (User u : all) {
+                String roleName = u.getRoles() != null && !u.getRoles().isEmpty()
+                        ? u.getRoles().iterator().next().getName() : "";
+                printer.printRecord(
+                        u.getId(), u.getUsername(), u.getEmail(), roleName,
+                        u.getStatus(), u.getCreatedAt() != null ? u.getCreatedAt().toString() : "");
+            }
+        } catch (IOException ex) {
+            throw new RuntimeException("Erreur export CSV", ex);
+        }
+        return baos.toByteArray();
+    }
+
+    public byte[] exportJson() {
+        List<UserResponse> all = userRepository.findAll(Sort.by(Sort.Direction.ASC, "username"))
+                .stream().map(userMapper::toResponse).toList();
+        try {
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(all);
+        } catch (JsonProcessingException ex) {
+            throw new RuntimeException("Erreur export JSON", ex);
+        }
+    }
+
+    // ──────────────── Import ────────────────
+
+    @Transactional
+    public ImportResult importCsv(MultipartFile file) {
+        int imported = 0, skipped = 0;
+        List<String> errors = new ArrayList<>();
+        try (CSVParser parser = CSVParser.parse(file.getInputStream(), StandardCharsets.UTF_8,
+                CSVFormat.DEFAULT.builder()
+                        .setHeader().setSkipHeaderRecord(true)
+                        .setIgnoreHeaderCase(true).setTrim(true).build())) {
+            for (CSVRecord record : parser) {
+                try {
+                    String username = record.get("username");
+                    String email    = record.get("email");
+                    if (userRepository.existsByUsername(username) || userRepository.existsByEmail(email)) {
+                        skipped++;
+                        continue;
+                    }
+                    UserRequest req = new UserRequest();
+                    req.setUsername(username);
+                    req.setEmail(email);
+                    req.setPassword(safeGet(record, "password"));
+                    req.setRoleName(safeGet(record, "roleName") != null ? safeGet(record, "roleName") : "USER");
+                    String statusStr = safeGet(record, "status");
+                    req.setStatus(statusStr != null && !statusStr.isBlank()
+                            ? com.secogroupe.app.entity.UserStatus.valueOf(statusStr.toUpperCase())
+                            : com.secogroupe.app.entity.UserStatus.ACTIVE);
+                    createUser(req);
+                    imported++;
+                } catch (Exception e) {
+                    errors.add("Ligne " + record.getRecordNumber() + ": " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Lecture du fichier CSV impossible", e);
+        }
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    @Transactional
+    public ImportResult importJson(MultipartFile file) {
+        int imported = 0, skipped = 0;
+        List<String> errors = new ArrayList<>();
+        try {
+            List<UserRequest> requests = objectMapper.readValue(file.getInputStream(),
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, UserRequest.class));
+            int idx = 1;
+            for (UserRequest req : requests) {
+                try {
+                    if (userRepository.existsByUsername(req.getUsername()) || userRepository.existsByEmail(req.getEmail())) {
+                        skipped++;
+                    } else {
+                        createUser(req);
+                        imported++;
+                    }
+                } catch (Exception e) {
+                    errors.add("Entrée " + idx + ": " + e.getMessage());
+                }
+                idx++;
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Lecture du fichier JSON impossible", e);
+        }
+        return new ImportResult(imported, skipped, errors);
+    }
+
+    private static String safeGet(CSVRecord r, String col) {
+        try { return r.get(col); } catch (IllegalArgumentException e) { return null; }
     }
 }

@@ -2,7 +2,9 @@ package com.secogroupe.app.controller;
 
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -65,5 +67,25 @@ public class RoleController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         roleService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ──────────────── Export ────────────────
+
+    @PreAuthorize("hasAuthority('READ_ROLE')")
+    @GetMapping("/export/csv")
+    public ResponseEntity<byte[]> exportCsv() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"roles.csv\"")
+                .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
+                .body(roleService.exportCsv());
+    }
+
+    @PreAuthorize("hasAuthority('READ_ROLE')")
+    @GetMapping("/export/json")
+    public ResponseEntity<byte[]> exportJson() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"roles.json\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(roleService.exportJson());
     }
 }
