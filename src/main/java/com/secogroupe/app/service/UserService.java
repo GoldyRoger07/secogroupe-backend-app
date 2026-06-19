@@ -19,7 +19,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -224,7 +223,7 @@ public class UserService {
         verificationTokenRepository.save(token);
         try {
             emailService.sendVerificationEmail(user.getEmail(), user.getUsername(), otpCode, linkToken);
-        } catch (MailException e) {
+        } catch (Exception e) {
             log.error("Échec de l'envoi du mail de vérification à {} : {}", user.getEmail(), e.getMessage());
         }
     }
