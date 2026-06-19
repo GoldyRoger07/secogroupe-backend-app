@@ -32,7 +32,8 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (Exception e) {
             loginHistoryService.record(request.getUsername(), clientIp, device, false);
-            throw e;
+             e.printStackTrace();
+             return null;
         }
 
         loginHistoryService.record(request.getUsername(), clientIp, device, true);
