@@ -30,10 +30,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Value("${website.url}")
+    @Value("${app.website-url}")
     private String websiteUrl;
 
-    @Value("${app.frontend.url}")
+    @Value("${app.frontend-url}")
     private String appFrontendUrl;
 
 
