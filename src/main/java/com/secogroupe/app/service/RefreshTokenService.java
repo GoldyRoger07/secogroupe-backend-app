@@ -41,13 +41,13 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(refreshToken);
     }
 
-    public RefreshToken validateRefreshToken(String token) {
-        RefreshToken refreshToken = refreshTokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Refresh token invalide ou inexistant"));
+    public RefreshToken validateById(Long id) {
+        RefreshToken refreshToken = refreshTokenRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Session invalide ou inexistante"));
 
         if (refreshToken.getExpiryDate().isBefore(Instant.now())) {
             refreshTokenRepository.delete(refreshToken);
-            throw new RuntimeException("Refresh token expiré. Veuillez vous reconnecter.");
+            throw new RuntimeException("Session expirée. Veuillez vous reconnecter.");
         }
 
         return refreshToken;

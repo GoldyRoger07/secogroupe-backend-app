@@ -7,8 +7,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import com.secogroupe.app.dto.AuthRequest;
-import com.secogroupe.app.dto.AuthResponse;
-import com.secogroupe.app.dto.RefreshRequest;
+import com.secogroupe.app.dto.LoginResult;
 import com.secogroupe.app.entity.RefreshToken;
 import com.secogroupe.app.security.CustomUserDetailsService;
 import com.secogroupe.app.security.JwtService;
@@ -25,29 +24,28 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final LoginHistoryService loginHistoryService;
 
-    public AuthResponse login(AuthRequest request, String clientIp, String device) {
+    public LoginResult login(AuthRequest request, String clientIp, String device) {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (Exception e) {
             loginHistoryService.record(request.getUsername(), clientIp, device, false);
-             e.printStackTrace();
-             return null;
+            e.printStackTrace();
+            return null;
         }
 
         loginHistoryService.record(request.getUsername(), clientIp, device, true);
 
-        // Le principal est déjà chargé par DaoAuthenticationProvider — pas de 2e SELECT
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String accessToken = jwtService.generateToken(userDetails);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(request.getUsername());
 
-        return new AuthResponse(accessToken, refreshToken.getToken());
+        return new LoginResult(accessToken, refreshToken.getId());
     }
 
-    public AuthResponse refresh(RefreshRequest request) {
-        RefreshToken refreshToken = refreshTokenService.validateRefreshToken(request.getRefreshToken());
+    public LoginResult refresh(Long tokenId) {
+        RefreshToken refreshToken = refreshTokenService.validateById(tokenId);
         UserDetails userDetails = userDetailsService.loadUserByUsername(
                 refreshToken.getUser().getUsername());
 
@@ -56,7 +54,7 @@ public class AuthService {
                 refreshToken.getUser().getUsername());
 
         String newAccessToken = jwtService.generateToken(userDetails);
-        return new AuthResponse(newAccessToken, newRefreshToken.getToken());
+        return new LoginResult(newAccessToken, newRefreshToken.getId());
     }
 
     public void logout(String username) {
