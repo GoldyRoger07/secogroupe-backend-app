@@ -2,6 +2,8 @@ package com.secogroupe.app.entity;
 
 import java.time.Instant;
 
+import org.hibernate.annotations.CreationTimestamp;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -33,4 +35,8 @@ public class RefreshToken {
 
     @Column(nullable = false)
     private Instant expiryDate;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
 }

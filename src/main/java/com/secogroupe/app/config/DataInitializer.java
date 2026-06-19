@@ -51,16 +51,21 @@ public class DataInitializer {
             Permission deletePerm  = upsert("DELETE_PERMISSION", "Supprimer une permission","PERMISSIONS", "DELETE");
 
             // Quote permissions (demandes de devis)
-            Permission readQuote   = upsert("READ_QUOTE",   "Voir les demandes de devis",      "QUOTES", "READ");
-            Permission updateQuote = upsert("UPDATE_QUOTE", "Modifier une demande de devis",   "QUOTES", "UPDATE");
-            Permission deleteQuote = upsert("DELETE_QUOTE", "Supprimer une demande de devis",  "QUOTES", "DELETE");
+            Permission readQuote   = upsert("READ_QUOTE",   "Voir les demandes de devis",      "QUOTES",   "READ");
+            Permission updateQuote = upsert("UPDATE_QUOTE", "Modifier une demande de devis",   "QUOTES",   "UPDATE");
+            Permission deleteQuote = upsert("DELETE_QUOTE", "Supprimer une demande de devis",  "QUOTES",   "DELETE");
+
+            // Session permissions (gestion des connexions actives)
+            Permission readSession   = upsert("READ_SESSION",   "Voir les sessions actives",  "SESSIONS", "READ");
+            Permission deleteSession = upsert("DELETE_SESSION", "Révoquer une session",        "SESSIONS", "DELETE");
 
             Set<Permission> allPermissions = Set.of(
                     createEmp, readEmp, updateEmp, deleteEmp,
                     createUser, readUser, updateUser, deleteUser,
                     createRole, readRole, updateRole, deleteRole,
                     createPerm, readPerm, updatePerm, deletePerm,
-                    readQuote, updateQuote, deleteQuote);
+                    readQuote, updateQuote, deleteQuote,
+                    readSession, deleteSession);
 
             // ADMIN role – all permissions
             Role admin = roleRepo.findByName("ADMIN").orElseGet(() -> {

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.secogroupe.app.entity.UserStatus;
 
 import com.secogroupe.app.dto.ImportResult;
 import com.secogroupe.app.dto.PageResponse;
@@ -54,6 +57,13 @@ public class UserController {
     public ResponseEntity<UserResponse> update(@PathVariable Long id,
                                                @Valid @RequestBody UserRequest request) {
         return ResponseEntity.ok(userService.updateUser(id, request));
+    }
+
+    @PreAuthorize("hasAuthority('UPDATE_USER')")
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<UserResponse> patchStatus(@PathVariable Long id,
+                                                    @RequestParam String status) {
+        return ResponseEntity.ok(userService.patchStatus(id, UserStatus.valueOf(status)));
     }
 
     @PreAuthorize("hasAuthority('DELETE_USER')")

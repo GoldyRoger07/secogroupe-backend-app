@@ -200,6 +200,15 @@ public class UserService {
         userRepository.deleteById(id);
     }
 
+    @Transactional
+    public UserResponse patchStatus(Long id, com.secogroupe.app.entity.UserStatus status) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        user.setStatus(status);
+        user.setEnabled(status == com.secogroupe.app.entity.UserStatus.ACTIVE);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
     // ──────────────── private helpers ────────────────
 
     private void activateUser(EmailVerificationToken verificationToken) {
