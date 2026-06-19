@@ -35,7 +35,11 @@ public class QuoteController {
     public ResponseEntity<String> submit(@Valid @RequestBody QuoteRequestDto dto) {
         System.out.println("Hello World");
         quoteService.submit(dto);
-        return ResponseEntity.ok("Your quote request has been received. We will contact you shortly.");
+        return ResponseEntity.ok("""
+                {
+                    "message":"Your quote request has been received. We will contact you shortly."
+                }
+                """);
     }
 
     // ──────────────── Management (admin) ────────────────
