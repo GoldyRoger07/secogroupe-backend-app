@@ -207,9 +207,6 @@ public class UserService {
             throw new RuntimeException("Cet email est déjà utilisé");
         }
 
-        Role role = roleRepository.findByName(request.getRoleName())
-                .orElseThrow(() -> new RuntimeException("Rôle introuvable: " + request.getRoleName()));
-
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -217,7 +214,7 @@ public class UserService {
                 request.getPassword() != null ? request.getPassword() : UUID.randomUUID().toString()));
         user.setEnabled(true);
         user.setStatus(request.getStatus());
-        user.setRoles(Set.of(role));
+        user.setRoles(resolveRoles(request));
 
         return userMapper.toResponse(userRepository.save(user));
     }
@@ -243,11 +240,31 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        Role role = roleRepository.findByName(request.getRoleName())
-                .orElseThrow(() -> new RuntimeException("Rôle introuvable: " + request.getRoleName()));
-        user.setRoles(Set.of(role));
+        user.setRoles(resolveRoles(request));
 
         return userMapper.toResponse(userRepository.save(user));
+    }
+
+    /** Résout l'ensemble des rôles RBAC à partir de roleNames (ou roleName en repli). */
+    private Set<Role> resolveRoles(UserRequest request) {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        if (request.getRoleNames() != null) {
+            request.getRoleNames().stream()
+                    .filter(n -> n != null && !n.isBlank())
+                    .forEach(names::add);
+        }
+        if (names.isEmpty() && request.getRoleName() != null && !request.getRoleName().isBlank()) {
+            names.add(request.getRoleName());
+        }
+        if (names.isEmpty()) {
+            throw new RuntimeException("Au moins un rôle doit être assigné à l'utilisateur");
+        }
+        Set<Role> roles = new java.util.HashSet<>();
+        for (String name : names) {
+            roles.add(roleRepository.findByName(name)
+                    .orElseThrow(() -> new RuntimeException("Rôle introuvable: " + name)));
+        }
+        return roles;
     }
 
     @Transactional
@@ -306,10 +323,11 @@ public class UserService {
                         .setHeader("id", "username", "email", "roleName", "status", "createdAt")
                         .build())) {
             for (User u : all) {
-                String roleName = u.getRoles() != null && !u.getRoles().isEmpty()
-                        ? u.getRoles().iterator().next().getName() : "";
+                String roles = u.getRoles() == null ? "" : u.getRoles().stream()
+                        .map(Role::getName).sorted()
+                        .collect(java.util.stream.Collectors.joining(";"));
                 printer.printRecord(
-                        u.getId(), u.getUsername(), u.getEmail(), roleName,
+                        u.getId(), u.getUsername(), u.getEmail(), roles,
                         u.getStatus(), u.getCreatedAt() != null ? u.getCreatedAt().toString() : "");
             }
         } catch (IOException ex) {
@@ -350,7 +368,10 @@ public class UserService {
                     req.setUsername(username);
                     req.setEmail(email);
                     req.setPassword(safeGet(record, "password"));
-                    req.setRoleName(safeGet(record, "roleName") != null ? safeGet(record, "roleName") : "USER");
+                    String roleCol = safeGet(record, "roleName");
+                    req.setRoleNames(roleCol != null && !roleCol.isBlank()
+                            ? java.util.Arrays.stream(roleCol.split(";")).map(String::trim).filter(s -> !s.isBlank()).toList()
+                            : java.util.List.of("USER"));
                     String statusStr = safeGet(record, "status");
                     req.setStatus(statusStr != null && !statusStr.isBlank()
                             ? com.secogroupe.app.entity.UserStatus.valueOf(statusStr.toUpperCase())

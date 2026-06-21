@@ -24,6 +24,10 @@ public class Permission {
     private String module;
     private String action;
 
+    /** Permission système (seedée) : non supprimable et non renommable. */
+    @Column(name = "is_system", nullable = false)
+    private boolean system = false;
+
     @Column(updatable = false)
     private Instant createdAt;
 

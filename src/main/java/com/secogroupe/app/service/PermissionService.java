@@ -79,6 +79,10 @@ public class PermissionService {
         Permission permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Permission introuvable"));
 
+        if (permission.isSystem() && !permission.getName().equals(request.getName())) {
+            throw new RuntimeException("Le nom d'une permission système ne peut pas être modifié");
+        }
+
         permissionRepository.findByName(request.getName()).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new RuntimeException("Une permission avec ce nom existe déjà");
@@ -94,10 +98,12 @@ public class PermissionService {
 
     @Transactional
     public void delete(Long id) {
-        if (!permissionRepository.existsById(id)) {
-            throw new RuntimeException("Permission introuvable");
+        Permission permission = permissionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Permission introuvable"));
+        if (permission.isSystem()) {
+            throw new RuntimeException("Une permission système ne peut pas être supprimée");
         }
-        permissionRepository.deleteById(id);
+        permissionRepository.delete(permission);
     }
 
     // ──────────────── Export ────────────────

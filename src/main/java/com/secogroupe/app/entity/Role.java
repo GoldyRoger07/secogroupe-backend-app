@@ -24,6 +24,10 @@ public class Role {
 
     private String description;
 
+    /** Rôle système (seedé) : non supprimable et non renommable. */
+    @Column(name = "is_system", nullable = false)
+    private boolean system = false;
+
     @Column(updatable = false)
     private Instant createdAt;
 

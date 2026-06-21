@@ -11,5 +11,6 @@ public class RoleResponse {
     private String description;
     private int permissionCount;
     private List<Long> permissionIds;
+    private boolean system;
     private String createdAt;
 }

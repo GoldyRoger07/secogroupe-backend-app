@@ -1,5 +1,7 @@
 package com.secogroupe.app.dto;
 
+import java.util.List;
+
 import com.secogroupe.app.entity.UserStatus;
 
 import jakarta.validation.constraints.Email;
@@ -19,7 +21,11 @@ public class UserRequest {
 
     private String password;
 
-    @NotBlank
+    /** Rôles assignés à l'utilisateur (RBAC : plusieurs rôles possibles). */
+    private List<String> roleNames;
+
+    /** @deprecated conservé pour rétro-compatibilité (import CSV, anciens clients). Utiliser {@link #roleNames}. */
+    @Deprecated
     private String roleName;
 
     @NotNull

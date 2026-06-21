@@ -36,7 +36,7 @@ public class AttendanceController {
 
     // ──────────────── Code rotatif affiché par l'admin ────────────────
 
-    @PreAuthorize("hasAuthority('READ_ATTENDANCE')")
+    @PreAuthorize("hasAuthority('CREATE_ATTENDANCE_CODE')")
     @GetMapping("/code")
     public ResponseEntity<AttendanceCodeResponse> currentCode() {
         return ResponseEntity.ok(attendanceService.currentCode());

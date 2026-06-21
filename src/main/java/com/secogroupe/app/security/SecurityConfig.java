@@ -39,6 +39,7 @@ public class SecurityConfig {
 
 
     private final JwtFilter jwtFilter;
+    private final DynamicAuthorizationFilter dynamicAuthorizationFilter;
     private final CustomUserDetailsService userDetailsService;
 
     @Bean
@@ -63,6 +64,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(dynamicAuthorizationFilter, JwtFilter.class)
                 .build();
     }
 

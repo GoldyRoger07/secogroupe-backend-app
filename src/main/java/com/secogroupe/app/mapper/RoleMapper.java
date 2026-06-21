@@ -16,6 +16,7 @@ public class RoleMapper {
         res.setId(role.getId());
         res.setName(role.getName());
         res.setDescription(role.getDescription());
+        res.setSystem(role.isSystem());
         res.setCreatedAt(role.getCreatedAt() != null ? role.getCreatedAt().toString() : null);
         if (role.getPermissions() != null) {
             res.setPermissionCount(role.getPermissions().size());

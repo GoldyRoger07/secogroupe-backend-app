@@ -15,6 +15,7 @@ public class PermissionMapper {
         res.setDescription(permission.getDescription());
         res.setModule(permission.getModule());
         res.setAction(permission.getAction());
+        res.setSystem(permission.isSystem());
         res.setCreatedAt(permission.getCreatedAt() != null ? permission.getCreatedAt().toString() : null);
         return res;
     }

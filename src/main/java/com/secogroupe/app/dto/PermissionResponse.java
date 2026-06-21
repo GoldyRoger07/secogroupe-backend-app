@@ -9,5 +9,6 @@ public class PermissionResponse {
     private String description;
     private String module;
     private String action;
+    private boolean system;
     private String createdAt;
 }

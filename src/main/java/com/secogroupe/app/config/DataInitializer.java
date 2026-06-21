@@ -86,6 +86,7 @@ public class DataInitializer {
                 return r;
             });
             if (admin.getDescription() == null) admin.setDescription("Accès complet à toutes les fonctionnalités");
+            admin.setSystem(true);
             admin.setPermissions(allPermissions);
             roleRepo.save(admin);
 
@@ -96,6 +97,7 @@ public class DataInitializer {
                 return r;
             });
             if (user.getDescription() == null) user.setDescription("Accès en lecture seule aux employés");
+            user.setSystem(true);
             user.setPermissions(Set.of(readEmp));
             roleRepo.save(user);
 
@@ -120,6 +122,7 @@ public class DataInitializer {
         if (p.getDescription() == null) p.setDescription(description);
         if (p.getModule() == null) p.setModule(module);
         if (p.getAction() == null) p.setAction(action);
+        p.setSystem(true); // permission seedée → protégée
         return permRepo.save(p);
     }
 }

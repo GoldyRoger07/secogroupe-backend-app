@@ -75,6 +75,10 @@ public class RoleService {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rôle introuvable"));
 
+        if (role.isSystem() && !role.getName().equals(request.getName())) {
+            throw new RuntimeException("Le nom d'un rôle système ne peut pas être modifié");
+        }
+
         roleRepository.findByName(request.getName()).ifPresent(existing -> {
             if (!existing.getId().equals(id)) {
                 throw new RuntimeException("Un rôle avec ce nom existe déjà");
@@ -91,6 +95,9 @@ public class RoleService {
     public void delete(Long id) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rôle introuvable"));
+        if (role.isSystem()) {
+            throw new RuntimeException("Un rôle système ne peut pas être supprimé");
+        }
         role.setPermissions(Set.of());
         roleRepository.save(role);
         roleRepository.delete(role);
