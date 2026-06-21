@@ -35,6 +35,10 @@ public class EmployeeMapper {
         res.setPhotoUrl(emp.getPhotoUrl());
         res.setStatus(emp.getStatus());
         res.setCreatedAt(emp.getCreatedAt() != null ? emp.getCreatedAt().toString() : null);
+        if (emp.getUser() != null) {
+            res.setUserId(emp.getUser().getId());
+            res.setUserUsername(emp.getUser().getUsername());
+        }
         return res;
     }
 

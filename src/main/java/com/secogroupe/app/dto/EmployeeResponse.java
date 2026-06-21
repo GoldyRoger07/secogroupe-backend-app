@@ -17,4 +17,6 @@ public class EmployeeResponse {
     private String photoUrl;
     private EmployeeStatus status;
     private String createdAt;
+    private Long userId;
+    private String userUsername;
 }

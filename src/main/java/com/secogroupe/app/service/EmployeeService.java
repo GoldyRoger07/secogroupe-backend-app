@@ -27,8 +27,10 @@ import com.secogroupe.app.dto.ImportResult;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.entity.Employee;
 import com.secogroupe.app.entity.EmployeeStatus;
+import com.secogroupe.app.entity.User;
 import com.secogroupe.app.mapper.EmployeeMapper;
 import com.secogroupe.app.repository.EmployeeRepository;
+import com.secogroupe.app.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +42,7 @@ public class EmployeeService {
     private final EmployeeMapper mapper;
     private final PhotoStorageService photoStorageService;
     private final ObjectMapper objectMapper;
+    private final UserRepository userRepository;
 
     public PageResponse<EmployeeResponse> getAll(int page, int size, String sortField, String sortOrder, String filter) {
         Sort sort = buildSort(sortField, sortOrder);
@@ -62,6 +65,7 @@ public class EmployeeService {
 
     public EmployeeResponse create(EmployeeRequest request, MultipartFile photo) {
         Employee emp = mapper.toEntity(request);
+        applyUserLink(emp, request.getUserId());
         if (photo != null && !photo.isEmpty()) {
             emp.setPhotoUrl(photoStorageService.store(photo));
         }
@@ -72,6 +76,7 @@ public class EmployeeService {
         Employee emp = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employé introuvable"));
         mapper.update(emp, request);
+        applyUserLink(emp, request.getUserId());
         if (photo != null && !photo.isEmpty()) {
             if (emp.getPhotoUrl() != null) {
                 photoStorageService.delete(emp.getPhotoUrl());
@@ -194,6 +199,22 @@ public class EmployeeService {
     }
 
     // ──────────────── private helpers ────────────────
+
+    /** Lie (ou délie si userId == null) un compte utilisateur à l'employé, en vérifiant l'unicité. */
+    private void applyUserLink(Employee emp, Long userId) {
+        if (userId == null) {
+            emp.setUser(null);
+            return;
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Compte utilisateur introuvable"));
+        repository.findByUser_Id(userId).ifPresent(other -> {
+            if (emp.getId() == null || !other.getId().equals(emp.getId())) {
+                throw new RuntimeException("Ce compte utilisateur est déjà lié à un autre employé");
+            }
+        });
+        emp.setUser(user);
+    }
 
     private Sort buildSort(String sortField, String sortOrder) {
         if (sortField == null || sortField.isBlank()) return Sort.unsorted();

@@ -27,4 +27,7 @@ public class EmployeeRequest {
 
     @NotNull
     private EmployeeStatus status;
+
+    /** Compte utilisateur à lier à cet employé (pour le pointage). Optionnel. */
+    private Long userId;
 }
