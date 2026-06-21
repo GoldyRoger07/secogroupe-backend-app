@@ -21,8 +21,8 @@ public class EmailService {
     @Value("${app.base-url}")
     private String baseUrl;
 
-    @Value("${app.website-url}")
-    private String websiteUrl;
+    @Value("${app.frontend-url}")
+    private String appFrontendUrl;
 
     @Value("${app.mail.console-mode:false}")
     private boolean consoleModeEnabled;
@@ -112,7 +112,7 @@ public class EmailService {
     }
 
     public void sendPasswordResetEmail(String toEmail, String username, String resetToken) {
-        String resetLink = websiteUrl + "/reset-password?token=" + resetToken;
+        String resetLink = appFrontendUrl + "/reset-password?token=" + resetToken;
 
         if (consoleModeEnabled) {
             log.info("╔══════════════ RÉINITIALISATION MOT DE PASSE [mode console] ══════╗");
