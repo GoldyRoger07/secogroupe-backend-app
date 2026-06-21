@@ -1,5 +1,6 @@
 package com.secogroupe.app.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -19,9 +20,15 @@ import lombok.RequiredArgsConstructor;
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
-    private final JwtService jwtService;
+    
+    @Autowired
+    private JwtService jwtService;
+    
     private final CustomUserDetailsService userDetailsService;
-    private final RefreshTokenService refreshTokenService;
+    
+    @Autowired
+    private RefreshTokenService refreshTokenService;
+    
     private final LoginHistoryService loginHistoryService;
 
     public LoginResult login(AuthRequest request, String clientIp, String device) {

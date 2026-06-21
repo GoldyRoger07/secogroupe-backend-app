@@ -3,6 +3,7 @@ package com.secogroupe.app.controller;
 import java.security.Principal;
 import java.util.Arrays;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -28,17 +29,18 @@ import com.secogroupe.app.dto.VerifyOtpRequest;
 import com.secogroupe.app.service.AuthService;
 import com.secogroupe.app.service.UserService;
 
-import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v1/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
     private static final String COOKIE_NAME = "refreshToken";
 
-    private final AuthService authService;
-    private final UserService userService;
+    @Autowired
+    private  AuthService authService;
+    
+    @Autowired
+    private  UserService userService;
 
     @Value("${jwt.refresh-expiration}")
     private long refreshExpirationMs;
