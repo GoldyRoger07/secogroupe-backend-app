@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.secogroupe.app.dto.AttendanceCodeResponse;
 import com.secogroupe.app.dto.AttendanceResponse;
+import com.secogroupe.app.dto.AttendanceSettingsRequest;
+import com.secogroupe.app.dto.AttendanceSettingsResponse;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.dto.ScanRequest;
 import com.secogroupe.app.dto.ScanResponse;
@@ -76,5 +79,20 @@ public class AttendanceController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         attendanceService.delete(id);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
+    // ──────────────── Horaires de référence ────────────────
+
+    @PreAuthorize("hasAuthority('READ_ATTENDANCE')")
+    @GetMapping("/settings")
+    public ResponseEntity<AttendanceSettingsResponse> getSettings() {
+        return ResponseEntity.ok(attendanceService.getSettings());
+    }
+
+    @PreAuthorize("hasAuthority('UPDATE_ATTENDANCE')")
+    @PutMapping("/settings")
+    public ResponseEntity<AttendanceSettingsResponse> updateSettings(
+            @Valid @RequestBody AttendanceSettingsRequest request) {
+        return ResponseEntity.ok(attendanceService.updateSettings(request));
     }
 }

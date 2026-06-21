@@ -15,4 +15,8 @@ public class ScanResponse {
     private String employeeName;
     private LocalDate workDate;
     private Instant time;
+    /** Ponctualité de l'arrivée (EARLY|ON_TIME|LATE) — présent lors d'un check-in. */
+    private String arrivalStatus;
+    /** Ponctualité du départ (EARLY|ON_TIME|OVERTIME) — présent lors d'un check-out. */
+    private String departureStatus;
 }

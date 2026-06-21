@@ -66,6 +66,7 @@ public class DataInitializer {
 
             // Attendance permissions (présence / pointage QR)
             Permission readAtt   = upsert("READ_ATTENDANCE",   "Voir les présences et générer le QR", "ATTENDANCE", "READ");
+            Permission updateAtt = upsert("UPDATE_ATTENDANCE", "Configurer les horaires de référence","ATTENDANCE", "UPDATE");
             Permission deleteAtt = upsert("DELETE_ATTENDANCE", "Supprimer une présence",              "ATTENDANCE", "DELETE");
 
             Set<Permission> allPermissions = Set.of(
@@ -76,7 +77,7 @@ public class DataInitializer {
                     readQuote, updateQuote, deleteQuote,
                     readSession, deleteSession,
                     readApp, updateApp, deleteApp,
-                    readAtt, deleteAtt);
+                    readAtt, updateAtt, deleteAtt);
 
             // ADMIN role – all permissions
             Role admin = roleRepo.findByName("ADMIN").orElseGet(() -> {

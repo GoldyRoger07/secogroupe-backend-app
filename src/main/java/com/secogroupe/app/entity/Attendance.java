@@ -37,4 +37,10 @@ public class Attendance {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AttendanceStatus status = AttendanceStatus.CHECKED_IN;
+
+    @Enumerated(EnumType.STRING)
+    private ArrivalStatus arrivalStatus;
+
+    @Enumerated(EnumType.STRING)
+    private DepartureStatus departureStatus;
 }

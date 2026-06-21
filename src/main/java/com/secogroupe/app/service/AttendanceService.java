@@ -2,6 +2,8 @@ package com.secogroupe.app.service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,13 +14,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.secogroupe.app.dto.AttendanceCodeResponse;
 import com.secogroupe.app.dto.AttendanceResponse;
+import com.secogroupe.app.dto.AttendanceSettingsRequest;
+import com.secogroupe.app.dto.AttendanceSettingsResponse;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.dto.ScanResponse;
+import com.secogroupe.app.entity.ArrivalStatus;
 import com.secogroupe.app.entity.Attendance;
+import com.secogroupe.app.entity.AttendanceSettings;
 import com.secogroupe.app.entity.AttendanceStatus;
+import com.secogroupe.app.entity.DepartureStatus;
 import com.secogroupe.app.entity.Employee;
 import com.secogroupe.app.exception.ResourceNotFoundException;
 import com.secogroupe.app.repository.AttendanceRepository;
+import com.secogroupe.app.repository.AttendanceSettingsRepository;
 import com.secogroupe.app.repository.EmployeeRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -30,6 +38,7 @@ public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
     private final AttendanceCodeService codeService;
+    private final AttendanceSettingsRepository settingsRepository;
 
     // ──────────────── Code rotatif (admin) ────────────────
 
@@ -55,28 +64,96 @@ public class AttendanceService {
         String name = employee.getFirstName() + " " + employee.getLastName();
         LocalDate today = LocalDate.now();
         Instant now = Instant.now();
+        AttendanceSettings settings = getOrCreateSettings();
 
         Attendance attendance = attendanceRepository.findByEmployeeAndWorkDate(employee, today).orElse(null);
 
         if (attendance == null) {
+            ArrivalStatus arrival = evaluateArrival(now, settings);
             attendance = new Attendance();
             attendance.setEmployee(employee);
             attendance.setWorkDate(today);
             attendance.setCheckInAt(now);
             attendance.setStatus(AttendanceStatus.CHECKED_IN);
+            attendance.setArrivalStatus(arrival);
             attendanceRepository.save(attendance);
-            return new ScanResponse("CHECKED_IN", "Arrivée enregistrée ✅", name, today, now);
+            return new ScanResponse("CHECKED_IN", arrivalMessage(arrival), name, today, now,
+                    arrival.name(), null);
         }
 
         if (attendance.getCheckOutAt() == null) {
+            DepartureStatus departure = evaluateDeparture(now, settings);
             attendance.setCheckOutAt(now);
             attendance.setStatus(AttendanceStatus.CHECKED_OUT);
+            attendance.setDepartureStatus(departure);
             attendanceRepository.save(attendance);
-            return new ScanResponse("CHECKED_OUT", "Départ enregistré 👋", name, today, now);
+            return new ScanResponse("CHECKED_OUT", departureMessage(departure), name, today, now,
+                    attendance.getArrivalStatus() != null ? attendance.getArrivalStatus().name() : null,
+                    departure.name());
         }
 
         return new ScanResponse("ALREADY_COMPLETE",
-                "Votre présence est déjà complète pour aujourd'hui.", name, today, attendance.getCheckOutAt());
+                "Votre présence est déjà complète pour aujourd'hui.", name, today, attendance.getCheckOutAt(),
+                attendance.getArrivalStatus() != null ? attendance.getArrivalStatus().name() : null,
+                attendance.getDepartureStatus() != null ? attendance.getDepartureStatus().name() : null);
+    }
+
+    // ──────────────── Ponctualité ────────────────
+
+    private ArrivalStatus evaluateArrival(Instant moment, AttendanceSettings settings) {
+        LocalTime actual = LocalTime.ofInstant(moment, ZoneId.systemDefault());
+        LocalTime expected = settings.getExpectedCheckIn();
+        long grace = settings.getGraceMinutes();
+        if (actual.isAfter(expected.plusMinutes(grace))) return ArrivalStatus.LATE;
+        if (actual.isBefore(expected.minusMinutes(grace))) return ArrivalStatus.EARLY;
+        return ArrivalStatus.ON_TIME;
+    }
+
+    private DepartureStatus evaluateDeparture(Instant moment, AttendanceSettings settings) {
+        LocalTime actual = LocalTime.ofInstant(moment, ZoneId.systemDefault());
+        LocalTime expected = settings.getExpectedCheckOut();
+        long grace = settings.getGraceMinutes();
+        if (actual.isAfter(expected.plusMinutes(grace))) return DepartureStatus.OVERTIME;
+        if (actual.isBefore(expected.minusMinutes(grace))) return DepartureStatus.EARLY;
+        return DepartureStatus.ON_TIME;
+    }
+
+    private String arrivalMessage(ArrivalStatus status) {
+        return switch (status) {
+            case EARLY -> "Arrivée enregistrée — en avance ✅";
+            case ON_TIME -> "Arrivée enregistrée — à l'heure ✅";
+            case LATE -> "Arrivée enregistrée — en retard ⏰";
+        };
+    }
+
+    private String departureMessage(DepartureStatus status) {
+        return switch (status) {
+            case EARLY -> "Départ enregistré — anticipé 👋";
+            case ON_TIME -> "Départ enregistré — à l'heure 👋";
+            case OVERTIME -> "Départ enregistré — heures supplémentaires 👏";
+        };
+    }
+
+    // ──────────────── Paramètres horaires ────────────────
+
+    public AttendanceSettingsResponse getSettings() {
+        AttendanceSettings s = getOrCreateSettings();
+        return new AttendanceSettingsResponse(s.getExpectedCheckIn(), s.getExpectedCheckOut(), s.getGraceMinutes());
+    }
+
+    @Transactional
+    public AttendanceSettingsResponse updateSettings(AttendanceSettingsRequest request) {
+        AttendanceSettings s = getOrCreateSettings();
+        s.setExpectedCheckIn(request.getExpectedCheckIn());
+        s.setExpectedCheckOut(request.getExpectedCheckOut());
+        s.setGraceMinutes(request.getGraceMinutes());
+        settingsRepository.save(s);
+        return new AttendanceSettingsResponse(s.getExpectedCheckIn(), s.getExpectedCheckOut(), s.getGraceMinutes());
+    }
+
+    private AttendanceSettings getOrCreateSettings() {
+        return settingsRepository.findAll().stream().findFirst()
+                .orElseGet(() -> settingsRepository.save(new AttendanceSettings()));
     }
 
     // ──────────────── Consultation (admin) ────────────────
@@ -140,6 +217,8 @@ public class AttendanceService {
         r.setCheckInAt(a.getCheckInAt());
         r.setCheckOutAt(a.getCheckOutAt());
         r.setStatus(a.getStatus());
+        r.setArrivalStatus(a.getArrivalStatus());
+        r.setDepartureStatus(a.getDepartureStatus());
         return r;
     }
 }
