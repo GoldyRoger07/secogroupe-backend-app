@@ -59,4 +59,18 @@ public class RefreshTokenService {
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable : " + username));
         refreshTokenRepository.deleteByUser(user);
     }
+
+    
+    public RefreshToken findByToken(String token){
+      return refreshTokenRepository.findByToken(token).orElseThrow(() -> new RuntimeException("Refresh Token introuvable "));
+    }
+
+    public RefreshToken verifyExpiration(RefreshToken refreshToken){
+        if(refreshToken.getExpiryDate().isBefore(Instant.now())){
+            refreshTokenRepository.delete(refreshToken);
+            throw new RuntimeException("Refresh token expirer. Veuillez vous reconnecter.");
+        }
+
+        return refreshToken;
+    }
 }

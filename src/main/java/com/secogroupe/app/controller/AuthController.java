@@ -31,11 +31,11 @@ import com.secogroupe.app.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
-    private static final String COOKIE_NAME = "rid";
+    private static final String COOKIE_NAME = "refreshToken";
 
     private final AuthService authService;
     private final UserService userService;
@@ -46,32 +46,32 @@ public class AuthController {
     @Value("${app.cookie.secure:true}")
     private boolean cookieSecure;
 
-    @PostMapping("/v1/register")
+    @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
         userService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Compte créé. Vérifiez votre email pour activer votre compte.");
     }
 
-    @PostMapping("/v1/verify-otp")
+    @PostMapping("/verify-otp")
     public ResponseEntity<String> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
         userService.verifyByOtp(request.getEmail(), request.getOtpCode());
         return ResponseEntity.ok("Compte activé avec succès. Vous pouvez maintenant vous connecter.");
     }
 
-    @GetMapping("/v1/verify-email")
+    @GetMapping("/verify-email")
     public ResponseEntity<String> verifyEmail(@RequestParam("token") String token) {
         userService.verifyByLink(token);
         return ResponseEntity.ok("Email vérifié. Votre compte est maintenant actif.");
     }
 
-    @PostMapping("/v1/resend-verification")
+    @PostMapping("/resend-verification")
     public ResponseEntity<String> resendVerification(@RequestParam("email") String email) {
         userService.resendVerification(email);
         return ResponseEntity.ok("Un nouveau code de vérification a été envoyé à " + email);
     }
 
-    @PostMapping("/v1/login")
+    @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request,
                                               HttpServletRequest httpRequest,
                                               HttpServletResponse httpResponse) {
@@ -83,31 +83,29 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, buildCookie(result.refreshTokenId()).toString());
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, buildCookie(result.refreshToken()).toString());
         return ResponseEntity.ok(new AuthResponse(result.accessToken()));
     }
 
-    @PostMapping("/v1/refresh")
+    @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(HttpServletRequest httpRequest,
                                                 HttpServletResponse httpResponse) {
-        String rawId = readCookie(httpRequest);
-        if (rawId == null) {
+        String refreshTokenId = readCookie(httpRequest);
+        if (refreshTokenId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        long tokenId;
-        try {
-            tokenId = Long.parseLong(rawId);
-        } catch (NumberFormatException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        // 
 
-        LoginResult result = authService.refresh(tokenId);
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, buildCookie(result.refreshTokenId()).toString());
-        return ResponseEntity.ok(new AuthResponse(result.accessToken()));
+        LoginResult result = authService.refresh(refreshTokenId);
+        if(result!=null)
+            return ResponseEntity.ok(new AuthResponse(result.accessToken()));
+            // httpResponse.addHeader(HttpHeaders.SET_COOKIE, buildCookie(result.refreshTokenId()).toString());
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 
-    @PostMapping("/v1/logout")
+    @PostMapping("/logout")
     public ResponseEntity<Void> logout(Principal principal, HttpServletResponse httpResponse) {
         authService.logout(principal.getName());
         httpResponse.addHeader(HttpHeaders.SET_COOKIE, clearCookie().toString());
@@ -116,12 +114,12 @@ public class AuthController {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    private ResponseCookie buildCookie(Long tokenId) {
+    private ResponseCookie buildCookie(String tokenId) {
         return ResponseCookie.from(COOKIE_NAME, String.valueOf(tokenId))
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite("None")
-                .path("/auth/v1")
+                .path("/api/v1/auth/refresh")
                 .maxAge(refreshExpirationMs / 1000)
                 .build();
     }
@@ -131,7 +129,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite("None")
-                .path("/auth/v1")
+                .path("/api/v1/auth/refresh")
                 .maxAge(0)
                 .build();
     }

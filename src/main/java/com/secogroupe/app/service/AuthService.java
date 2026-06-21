@@ -41,20 +41,27 @@ public class AuthService {
         String accessToken = jwtService.generateToken(userDetails);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(request.getUsername());
 
-        return new LoginResult(accessToken, refreshToken.getId());
+        return new LoginResult(accessToken, refreshToken.getToken());
     }
 
-    public LoginResult refresh(Long tokenId) {
-        RefreshToken refreshToken = refreshTokenService.validateById(tokenId);
-        UserDetails userDetails = userDetailsService.loadUserByUsername(
-                refreshToken.getUser().getUsername());
+    public LoginResult refresh(String token) {
+        RefreshToken refreshToken = refreshTokenService.findByToken(token);
+        refreshToken = refreshTokenService.verifyExpiration(refreshToken);
+        if(refreshToken != null){
 
-        refreshTokenService.deleteByUser(refreshToken.getUser().getUsername());
-        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(
-                refreshToken.getUser().getUsername());
+        
+            UserDetails userDetails = userDetailsService.loadUserByUsername(
+                    refreshToken.getUser().getUsername());
 
-        String newAccessToken = jwtService.generateToken(userDetails);
-        return new LoginResult(newAccessToken, newRefreshToken.getId());
+            // refreshTokenService.deleteByUser(refreshToken.getUser().getUsername());
+            // RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(
+            //         refreshToken.getUser().getUsername());
+
+            String newAccessToken = jwtService.generateToken(userDetails);
+            return new LoginResult(newAccessToken, "");
+        }
+
+        return null;
     }
 
     public void logout(String username) {
