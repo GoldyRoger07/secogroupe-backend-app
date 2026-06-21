@@ -1,7 +1,12 @@
 package com.secogroupe.app.controller;
 
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.Arrays;
+
+import com.secogroupe.app.exception.VerificationExpiredException;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,8 +28,10 @@ import jakarta.validation.Valid;
 
 import com.secogroupe.app.dto.AuthRequest;
 import com.secogroupe.app.dto.AuthResponse;
+import com.secogroupe.app.dto.ForgotPasswordRequest;
 import com.secogroupe.app.dto.LoginResult;
 import com.secogroupe.app.dto.RegisterRequest;
+import com.secogroupe.app.dto.ResetPasswordRequest;
 import com.secogroupe.app.dto.VerifyOtpRequest;
 import com.secogroupe.app.service.AuthService;
 import com.secogroupe.app.service.UserService;
@@ -48,6 +55,9 @@ public class AuthController {
     @Value("${app.cookie.secure:true}")
     private boolean cookieSecure;
 
+    @Value("${app.website-url}")
+    private String websiteUrl;
+
     @PostMapping("/register")
     public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
         userService.register(request);
@@ -62,15 +72,38 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
-    public ResponseEntity<String> verifyEmail(@RequestParam("token") String token) {
-        userService.verifyByLink(token);
-        return ResponseEntity.ok("Email vérifié. Votre compte est maintenant actif.");
+    public void verifyEmail(@RequestParam("token") String token,
+                            HttpServletResponse response) throws IOException {
+        String redirect;
+        try {
+            userService.verifyByLink(token);
+            redirect = websiteUrl + "/email-verified?status=success";
+        } catch (VerificationExpiredException e) {
+            redirect = websiteUrl + "/email-verified?status=expired&email="
+                    + URLEncoder.encode(e.getEmail(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            redirect = websiteUrl + "/email-verified?status=error";
+        }
+        response.sendRedirect(redirect);
     }
 
     @PostMapping("/resend-verification")
     public ResponseEntity<String> resendVerification(@RequestParam("email") String email) {
         userService.resendVerification(email);
         return ResponseEntity.ok("Un nouveau code de vérification a été envoyé à " + email);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        userService.requestPasswordReset(request.getEmail());
+        // Réponse volontairement neutre (anti-énumération de comptes)
+        return ResponseEntity.ok("Si un compte est associé à cet email, un lien de réinitialisation a été envoyé.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.ok("Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.");
     }
 
     @PostMapping("/login")

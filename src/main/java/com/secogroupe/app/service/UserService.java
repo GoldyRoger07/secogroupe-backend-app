@@ -32,10 +32,13 @@ import com.secogroupe.app.dto.RegisterRequest;
 import com.secogroupe.app.dto.UserRequest;
 import com.secogroupe.app.dto.UserResponse;
 import com.secogroupe.app.entity.EmailVerificationToken;
+import com.secogroupe.app.entity.PasswordResetToken;
 import com.secogroupe.app.entity.Role;
 import com.secogroupe.app.entity.User;
+import com.secogroupe.app.exception.VerificationExpiredException;
 import com.secogroupe.app.mapper.UserMapper;
 import com.secogroupe.app.repository.EmailVerificationTokenRepository;
+import com.secogroupe.app.repository.PasswordResetTokenRepository;
 import com.secogroupe.app.repository.RoleRepository;
 import com.secogroupe.app.repository.UserRepository;
 
@@ -48,10 +51,13 @@ import lombok.extern.slf4j.Slf4j;
 public class UserService {
 
     private static final long OTP_EXPIRATION_MS = 15 * 60 * 1000L;
+    private static final long RESET_EXPIRATION_MS = 30 * 60 * 1000L;
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final EmailVerificationTokenRepository verificationTokenRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final RefreshTokenService refreshTokenService;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
@@ -102,8 +108,9 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Lien de vérification invalide ou déjà utilisé"));
 
         if (verificationToken.getExpiryDate().isBefore(Instant.now())) {
+            String email = verificationToken.getUser().getEmail();
             verificationTokenRepository.delete(verificationToken);
-            throw new RuntimeException("Lien de vérification expiré. Veuillez demander un nouveau code.");
+            throw new VerificationExpiredException(email);
         }
         activateUser(verificationToken);
     }
@@ -117,6 +124,57 @@ public class UserService {
         }
         verificationTokenRepository.deleteByUser(user);
         sendVerificationEmail(user);
+    }
+
+    // ──────────────── Password reset ────────────────
+
+    /**
+     * Génère un token de réinitialisation et envoie le lien par email.
+     * Ne révèle jamais si l'email existe (protection contre l'énumération de comptes).
+     */
+    @Transactional
+    public void requestPasswordReset(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            passwordResetTokenRepository.deleteByUser(user);
+
+            String token = UUID.randomUUID().toString();
+            PasswordResetToken resetToken = PasswordResetToken.builder()
+                    .token(token)
+                    .user(user)
+                    .expiryDate(Instant.now().plusMillis(RESET_EXPIRATION_MS))
+                    .build();
+            passwordResetTokenRepository.save(resetToken);
+
+            try {
+                emailService.sendPasswordResetEmail(user.getEmail(), user.getUsername(), token);
+            } catch (Exception e) {
+                log.error("Échec de l'envoi du mail de réinitialisation à {} : {}", user.getEmail(), e.getMessage());
+            }
+        });
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Lien de réinitialisation invalide ou déjà utilisé"));
+
+        if (resetToken.getExpiryDate().isBefore(Instant.now())) {
+            passwordResetTokenRepository.delete(resetToken);
+            throw new RuntimeException("Lien de réinitialisation expiré. Veuillez refaire une demande.");
+        }
+
+        User user = resetToken.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        passwordResetTokenRepository.delete(resetToken);
+
+        // Invalide les sessions existantes par sécurité
+        try {
+            refreshTokenService.deleteByUser(user.getUsername());
+        } catch (Exception e) {
+            log.warn("Impossible d'invalider les sessions de {} : {}", user.getUsername(), e.getMessage());
+        }
     }
 
     // ──────────────── CRUD (admin) ────────────────

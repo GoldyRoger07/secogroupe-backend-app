@@ -59,13 +59,19 @@ public class DataInitializer {
             Permission readSession   = upsert("READ_SESSION",   "Voir les sessions actives",  "SESSIONS", "READ");
             Permission deleteSession = upsert("DELETE_SESSION", "Révoquer une session",        "SESSIONS", "DELETE");
 
+            // Application permissions (candidatures / recrutement)
+            Permission readApp   = upsert("READ_APPLICATION",   "Voir les candidatures",       "APPLICATIONS", "READ");
+            Permission updateApp = upsert("UPDATE_APPLICATION", "Modifier une candidature",    "APPLICATIONS", "UPDATE");
+            Permission deleteApp = upsert("DELETE_APPLICATION", "Supprimer une candidature",   "APPLICATIONS", "DELETE");
+
             Set<Permission> allPermissions = Set.of(
                     createEmp, readEmp, updateEmp, deleteEmp,
                     createUser, readUser, updateUser, deleteUser,
                     createRole, readRole, updateRole, deleteRole,
                     createPerm, readPerm, updatePerm, deletePerm,
                     readQuote, updateQuote, deleteQuote,
-                    readSession, deleteSession);
+                    readSession, deleteSession,
+                    readApp, updateApp, deleteApp);
 
             // ADMIN role – all permissions
             Role admin = roleRepo.findByName("ADMIN").orElseGet(() -> {

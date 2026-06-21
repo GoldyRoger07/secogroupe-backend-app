@@ -21,6 +21,9 @@ public class EmailService {
     @Value("${app.base-url}")
     private String baseUrl;
 
+    @Value("${app.website-url}")
+    private String websiteUrl;
+
     @Value("${app.mail.console-mode:false}")
     private boolean consoleModeEnabled;
 
@@ -55,7 +58,7 @@ public class EmailService {
     }
 
     public void sendVerificationEmail(String toEmail, String username, String otpCode, String linkToken) {
-        String verificationLink = baseUrl + "/auth/v1/verify-email?token=" + linkToken;
+        String verificationLink = baseUrl + "/api/v1/auth/verify-email?token=" + linkToken;
 
         if (consoleModeEnabled) {
             log.info("╔══════════════ EMAIL DE VÉRIFICATION [mode console] ══════════════╗");
@@ -106,6 +109,60 @@ public class EmailService {
                 """.formatted(username, otpCode, verificationLink);
 
         send(toEmail, "Vérifiez votre adresse email — Secogroupe", html);
+    }
+
+    public void sendPasswordResetEmail(String toEmail, String username, String resetToken) {
+        String resetLink = websiteUrl + "/reset-password?token=" + resetToken;
+
+        if (consoleModeEnabled) {
+            log.info("╔══════════════ RÉINITIALISATION MOT DE PASSE [mode console] ══════╗");
+            log.info("  À           : {}", toEmail);
+            log.info("  Utilisateur : {}", username);
+            log.info("  Lien        : {}", resetLink);
+            log.info("╚══════════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
+        String html = """
+                <!DOCTYPE html>
+                <html lang="fr">
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+                  <div style="max-width: 520px; margin: auto; background: #ffffff; border-radius: 8px;
+                              padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="color: #2c3e50;">Réinitialisation de votre mot de passe</h2>
+                    <p style="color: #555;">Bonjour %s,</p>
+                    <p style="color: #555;">
+                      Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton
+                      ci-dessous pour en définir un nouveau.
+                    </p>
+
+                    <div style="margin: 28px 0; text-align: center;">
+                      <a href="%s"
+                         style="display: inline-block; background-color: #4a90e2; color: white;
+                                text-decoration: none; padding: 12px 28px; border-radius: 6px;
+                                font-size: 15px; font-weight: bold;">
+                        Réinitialiser mon mot de passe
+                      </a>
+                      <p style="color: #999; font-size: 12px; margin-top: 12px;">Ce lien expire dans <strong>30 minutes</strong>.</p>
+                    </div>
+
+                    <p style="color: #555; font-size: 13px;">
+                      Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
+                      <a href="%s" style="color: #4a90e2; word-break: break-all;">%s</a>
+                    </p>
+
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
+                    <p style="color: #aaa; font-size: 12px;">
+                      Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.
+                      Votre mot de passe restera inchangé.
+                    </p>
+                  </div>
+                </body>
+                </html>
+                """.formatted(username, resetLink, resetLink, resetLink);
+
+        send(toEmail, "Réinitialisation de votre mot de passe — Secogroupe", html);
     }
 
     public void sendQuoteNotification(com.secogroupe.app.dto.QuoteRequestDto dto) {
@@ -233,5 +290,108 @@ public class EmailService {
                 fromAddress, fromAddress);
 
         send(dto.getEmail(), "We received your quote request — Secogroupe", html);
+    }
+
+    public void sendApplicationNotification(com.secogroupe.app.dto.ApplicationRequestDto dto) {
+        if (consoleModeEnabled) {
+            log.info("╔══════════════ NOUVELLE CANDIDATURE [mode console] ═══════════════╗");
+            log.info("  Nom         : {} {}", dto.getFirstName(), dto.getLastName());
+            log.info("  Email       : {}", dto.getEmail());
+            log.info("  Téléphone   : {}", dto.getPhone());
+            log.info("  Poste       : {}", dto.getPosition());
+            log.info("╚══════════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
+        String html = """
+                <!DOCTYPE html>
+                <html lang="fr">
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;">
+                  <div style="max-width:600px;margin:auto;background:#fff;border-radius:8px;
+                              padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="color:#2c3e50;margin-top:0;">👤 Nouvelle candidature</h2>
+                    <table style="width:100%%;border-collapse:collapse;">
+                      <tr style="background:#f8f9fa;">
+                        <td style="padding:10px 14px;font-weight:bold;color:#555;width:40%%;">Poste visé</td>
+                        <td style="padding:10px 14px;color:#2c3e50;">%s</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:10px 14px;font-weight:bold;color:#555;">Candidat</td>
+                        <td style="padding:10px 14px;color:#2c3e50;">%s %s</td>
+                      </tr>
+                      <tr style="background:#f8f9fa;">
+                        <td style="padding:10px 14px;font-weight:bold;color:#555;">Email</td>
+                        <td style="padding:10px 14px;">
+                          <a href="mailto:%s" style="color:#4a90e2;">%s</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:10px 14px;font-weight:bold;color:#555;">Téléphone</td>
+                        <td style="padding:10px 14px;color:#2c3e50;">%s</td>
+                      </tr>
+                    </table>
+                    <div style="margin-top:24px;text-align:center;">
+                      <a href="mailto:%s"
+                         style="background:#4a90e2;color:#fff;padding:12px 28px;border-radius:6px;
+                                text-decoration:none;font-weight:bold;display:inline-block;">
+                        Répondre à %s
+                      </a>
+                    </div>
+                  </div>
+                </body>
+                </html>
+                """.formatted(
+                dto.getPosition(),
+                dto.getFirstName(), dto.getLastName(),
+                dto.getEmail(), dto.getEmail(),
+                dto.getPhone(),
+                dto.getEmail(), dto.getFirstName());
+
+        send(fromAddress, "Nouvelle candidature — " + dto.getFirstName() + " " + dto.getLastName(), html, dto.getEmail());
+    }
+
+    public void sendApplicationConfirmation(com.secogroupe.app.dto.ApplicationRequestDto dto) {
+        if (consoleModeEnabled) {
+            log.info("[mode console] Accusé de réception candidature envoyé à {}", dto.getEmail());
+            return;
+        }
+
+        String html = """
+                <!DOCTYPE html>
+                <html lang="en">
+                <head><meta charset="UTF-8"></head>
+                <body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px;">
+                  <div style="max-width:520px;margin:auto;background:#fff;border-radius:8px;
+                              padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                    <h2 style="color:#2c3e50;margin-top:0;">Thank you, %s!</h2>
+                    <p style="color:#555;">
+                      We have received your application for the position of <strong>%s</strong>
+                      and our recruitment team will get back to you shortly.
+                    </p>
+                    <div style="background:#f0f4ff;border-left:4px solid #4a90e2;
+                                padding:14px 18px;border-radius:4px;margin:20px 0;">
+                      <p style="margin:0;color:#555;font-size:14px;">
+                        <strong>Position applied for:</strong> %s
+                      </p>
+                    </div>
+                    <p style="color:#555;">
+                      If you have any urgent questions, feel free to reach us at
+                      <a href="mailto:%s" style="color:#4a90e2;">%s</a>.
+                    </p>
+                    <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+                    <p style="color:#aaa;font-size:12px;">
+                      You are receiving this email because you submitted a job application on secogroupe.com.
+                    </p>
+                  </div>
+                </body>
+                </html>
+                """.formatted(
+                dto.getFirstName(),
+                dto.getPosition(),
+                dto.getPosition(),
+                fromAddress, fromAddress);
+
+        send(dto.getEmail(), "We received your application — Secogroupe", html);
     }
 }
