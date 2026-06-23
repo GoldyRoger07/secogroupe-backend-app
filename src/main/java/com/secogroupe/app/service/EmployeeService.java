@@ -15,6 +15,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,6 +47,9 @@ public class EmployeeService {
     private final UserRepository userRepository;
 
     public PageResponse<EmployeeResponse> getAll(int page, int size, String sortField, String sortOrder, String filter) {
+        boolean canViewContact   = hasAuthority("READ_EMPLOYEE_CONTACT");
+        boolean canViewSensitive = hasAuthority("READ_EMPLOYEE_SENSITIVE");
+
         Sort sort = buildSort(sortField, sortOrder);
         Pageable pageable = PageRequest.of(page, size, sort);
         String f = (filter != null && !filter.isBlank()) ? filter : "";
@@ -56,7 +61,9 @@ public class EmployeeService {
                     f, f, f, f, f, pageable);
         }
         return new PageResponse<>(
-                resultPage.getContent().stream().map(mapper::toResponse).toList(),
+                resultPage.getContent().stream()
+                        .map(e -> mapper.toResponse(e, canViewContact, canViewSensitive))
+                        .toList(),
                 resultPage.getTotalElements(),
                 resultPage.getTotalPages(),
                 page,
@@ -214,6 +221,12 @@ public class EmployeeService {
             }
         });
         emp.setUser(user);
+    }
+
+    private boolean hasAuthority(String authority) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(authority));
     }
 
     private Sort buildSort(String sortField, String sortOrder) {

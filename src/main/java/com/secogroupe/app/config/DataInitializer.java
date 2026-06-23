@@ -7,10 +7,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.secogroupe.app.entity.CompanySettings;
+import com.secogroupe.app.entity.Department;
 import com.secogroupe.app.entity.Permission;
+import com.secogroupe.app.entity.Position;
 import com.secogroupe.app.entity.Role;
 import com.secogroupe.app.repository.CompanySettingsRepository;
+import com.secogroupe.app.repository.DepartmentRepository;
 import com.secogroupe.app.repository.PermissionRepository;
+import com.secogroupe.app.repository.PositionRepository;
 import com.secogroupe.app.repository.RoleRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -22,6 +26,8 @@ public class DataInitializer {
     private final RoleRepository roleRepo;
     private final PermissionRepository permRepo;
     private final CompanySettingsRepository companySettingsRepo;
+    private final DepartmentRepository departmentRepo;
+    private final PositionRepository positionRepo;
 
     @Bean
     CommandLineRunner initData() {
@@ -69,6 +75,10 @@ public class DataInitializer {
             Permission updateAtt = upsert("UPDATE_ATTENDANCE", "Configurer les horaires de référence","ATTENDANCE", "UPDATE");
             Permission deleteAtt = upsert("DELETE_ATTENDANCE", "Supprimer une présence",              "ATTENDANCE", "DELETE");
 
+            // Employee data visibility permissions
+            Permission readEmpContact   = upsert("READ_EMPLOYEE_CONTACT",   "Voir les coordonnées des employés (email, téléphone)", "EMPLOYEES", "READ_CONTACT");
+            Permission readEmpSensitive = upsert("READ_EMPLOYEE_SENSITIVE", "Voir les données RH sensibles (salaire, NIF, bancaire, personnel)", "EMPLOYEES", "READ_SENSITIVE");
+
             Set<Permission> allPermissions = Set.of(
                     createEmp, readEmp, updateEmp, deleteEmp,
                     createUser, readUser, updateUser, deleteUser,
@@ -77,7 +87,8 @@ public class DataInitializer {
                     readQuote, updateQuote, deleteQuote,
                     readSession, deleteSession,
                     readApp, updateApp, deleteApp,
-                    readAtt, updateAtt, deleteAtt);
+                    readAtt, updateAtt, deleteAtt,
+                    readEmpContact, readEmpSensitive);
 
             // ADMIN role – all permissions
             Role admin = roleRepo.findByName("ADMIN").orElseGet(() -> {
@@ -100,6 +111,24 @@ public class DataInitializer {
             user.setSystem(true);
             user.setPermissions(Set.of(readEmp));
             roleRepo.save(user);
+
+            // Default Departments
+            for (String name : new String[]{"Commercial", "Finance", "IT", "Marketing", "Opérations", "RH"}) {
+                if (!departmentRepo.existsByNameIgnoreCase(name)) {
+                    Department d = new Department();
+                    d.setName(name);
+                    departmentRepo.save(d);
+                }
+            }
+
+            // Default Positions
+            for (String name : new String[]{"Comptable", "Développeur", "Directeur", "Manager", "Responsable RH", "Technicien"}) {
+                if (!positionRepo.existsByNameIgnoreCase(name)) {
+                    Position p = new Position();
+                    p.setName(name);
+                    positionRepo.save(p);
+                }
+            }
 
             // Default CompanySettings (only if not yet created)
             if (companySettingsRepo.count() == 0) {

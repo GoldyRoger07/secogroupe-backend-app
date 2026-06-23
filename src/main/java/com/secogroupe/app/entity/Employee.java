@@ -1,6 +1,9 @@
 package com.secogroupe.app.entity;
 
 import java.time.Instant;
+import java.time.LocalDate;
+
+import com.secogroupe.app.model.Sexe;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -19,6 +22,9 @@ public class Employee {
     @GeneratedValue
     private Long id;
 
+    @Column(unique=true)
+    private String idEmployee;
+
     private String firstName;
     private String lastName;
     private String email;
@@ -27,6 +33,25 @@ public class Employee {
     private String department;
     private Double salary;
     private String photoUrl;
+
+    @Enumerated(EnumType.STRING)
+    private Sexe sexe;
+
+    private String nif;
+
+    private String adresse;
+
+    private String etatCivil;
+
+    private int nombreEnfant;
+
+    private LocalDate dateEmbauche;
+
+    private LocalDate dateNaissance;
+
+    private String banque;
+    
+    private String numCompteBancaire;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
