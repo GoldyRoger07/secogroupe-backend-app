@@ -18,6 +18,7 @@ import com.secogroupe.app.dto.AttendanceSettingsRequest;
 import com.secogroupe.app.dto.AttendanceSettingsResponse;
 import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.dto.ScanResponse;
+import com.secogroupe.app.dto.SseEvent;
 import com.secogroupe.app.entity.ArrivalStatus;
 import com.secogroupe.app.entity.Attendance;
 import com.secogroupe.app.entity.AttendanceSettings;
@@ -39,6 +40,7 @@ public class AttendanceService {
     private final EmployeeRepository employeeRepository;
     private final AttendanceCodeService codeService;
     private final AttendanceSettingsRepository settingsRepository;
+    private final SseEmitterService sseEmitterService;
 
     // ──────────────── Code rotatif (admin) ────────────────
 
@@ -77,6 +79,12 @@ public class AttendanceService {
             attendance.setStatus(AttendanceStatus.CHECKED_IN);
             attendance.setArrivalStatus(arrival);
             attendanceRepository.save(attendance);
+            sseEmitterService.broadcast(new SseEvent(
+                    "NEW_ATTENDANCE",
+                    "Pointage entrée",
+                    name + " — " + arrivalMessage(arrival),
+                    attendance.getId()
+            ));
             return new ScanResponse("CHECKED_IN", arrivalMessage(arrival), name, today, now,
                     arrival.name(), null);
         }
@@ -87,6 +95,12 @@ public class AttendanceService {
             attendance.setStatus(AttendanceStatus.CHECKED_OUT);
             attendance.setDepartureStatus(departure);
             attendanceRepository.save(attendance);
+            sseEmitterService.broadcast(new SseEvent(
+                    "NEW_ATTENDANCE",
+                    "Pointage sortie",
+                    name + " — " + departureMessage(departure),
+                    attendance.getId()
+            ));
             return new ScanResponse("CHECKED_OUT", departureMessage(departure), name, today, now,
                     attendance.getArrivalStatus() != null ? attendance.getArrivalStatus().name() : null,
                     departure.name());

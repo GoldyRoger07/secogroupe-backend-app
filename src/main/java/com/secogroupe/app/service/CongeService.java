@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.secogroupe.app.dto.CongeRequest;
 import com.secogroupe.app.dto.CongeResponse;
 import com.secogroupe.app.dto.PageResponse;
+import com.secogroupe.app.dto.SseEvent;
 import com.secogroupe.app.entity.Conge;
 import com.secogroupe.app.entity.Employee;
 import com.secogroupe.app.mapper.CongeMapper;
@@ -27,6 +28,7 @@ public class CongeService {
     private final CongeRepository congeRepository;
     private final EmployeeRepository employeeRepository;
     private final CongeMapper mapper;
+    private final SseEmitterService sseEmitterService;
 
     public PageResponse<CongeResponse> getAll(int page, int size, String sortField, String sortOrder, String filter) {
         Sort sort = buildSort(sortField, sortOrder);
@@ -52,7 +54,14 @@ public class CongeService {
     public CongeResponse create(CongeRequest request) {
         Employee employee = findEmployee(request.getEmployeeId());
         Employee approvedBy = request.getApprovedById() != null ? findEmployee(request.getApprovedById()) : null;
-        return mapper.toResponse(congeRepository.save(mapper.toEntity(request, employee, approvedBy)));
+        Conge saved = congeRepository.save(mapper.toEntity(request, employee, approvedBy));
+        sseEmitterService.broadcast(new SseEvent(
+                "CONGE_CREATED",
+                "Nouvelle demande de congé",
+                employee.getFirstName() + " " + employee.getLastName() + " a soumis une demande de congé",
+                saved.getId()
+        ));
+        return mapper.toResponse(saved);
     }
 
     public CongeResponse update(Long id, CongeRequest request) {
@@ -69,7 +78,26 @@ public class CongeService {
         if (managerComment != null) conge.setManagerComment(managerComment);
         conge.setDecisionDate(Instant.now());
         conge.setUpdatedAt(Instant.now());
-        return mapper.toResponse(congeRepository.save(conge));
+        Conge saved = congeRepository.save(conge);
+
+        String statusLabel = switch (status) {
+            case APPROVED -> "approuvée";
+            case REJECTED -> "refusée";
+            default -> "mise à jour";
+        };
+        Employee emp = saved.getEmployee();
+        SseEvent event = new SseEvent(
+                "CONGE_STATUS_CHANGED",
+                "Demande de congé " + statusLabel,
+                "Votre demande de congé a été " + statusLabel,
+                saved.getId()
+        );
+        // Notifie en priorité l'employé concerné, puis broadcast pour les admins
+        if (emp.getUser() != null) {
+            sseEmitterService.send(emp.getUser().getUsername(), event);
+        }
+        sseEmitterService.broadcast(event);
+        return mapper.toResponse(saved);
     }
 
     public void delete(Long id) {

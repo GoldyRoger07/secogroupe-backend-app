@@ -21,6 +21,7 @@ import com.secogroupe.app.dto.PageResponse;
 import com.secogroupe.app.dto.QuoteRequestDto;
 import com.secogroupe.app.dto.QuoteResponse;
 import com.secogroupe.app.dto.QuoteUpdateRequest;
+import com.secogroupe.app.dto.SseEvent;
 import com.secogroupe.app.entity.QuoteRequest;
 import com.secogroupe.app.exception.ResourceNotFoundException;
 import com.secogroupe.app.repository.QuoteRequestRepository;
@@ -36,6 +37,7 @@ public class QuoteService {
     private final QuoteRequestRepository quoteRequestRepository;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
+    private final SseEmitterService sseEmitterService;
 
     // ──────────────── Public submission ────────────────
 
@@ -51,7 +53,14 @@ public class QuoteService {
         entity.setState(dto.getState());
         entity.setEmail(dto.getEmail());
         entity.setNewsletterOptIn(dto.isNewsletterOptIn());
-        quoteRequestRepository.save(entity);
+        QuoteRequest saved = quoteRequestRepository.save(entity);
+
+        sseEmitterService.broadcast(new SseEvent(
+                "NEW_QUOTE",
+                "Nouvelle demande de devis",
+                dto.getFirstName() + " " + dto.getLastName() + " — " + dto.getServiceCategory(),
+                saved.getId()
+        ));
 
         try {
             emailService.sendQuoteNotification(dto);

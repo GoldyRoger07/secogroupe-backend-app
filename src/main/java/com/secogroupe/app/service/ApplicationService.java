@@ -21,6 +21,7 @@ import com.secogroupe.app.dto.ApplicationRequestDto;
 import com.secogroupe.app.dto.ApplicationResponse;
 import com.secogroupe.app.dto.ApplicationUpdateRequest;
 import com.secogroupe.app.dto.PageResponse;
+import com.secogroupe.app.dto.SseEvent;
 import com.secogroupe.app.entity.JobApplication;
 import com.secogroupe.app.exception.ResourceNotFoundException;
 import com.secogroupe.app.repository.JobApplicationRepository;
@@ -36,6 +37,7 @@ public class ApplicationService {
     private final JobApplicationRepository jobApplicationRepository;
     private final EmailService emailService;
     private final ObjectMapper objectMapper;
+    private final SseEmitterService sseEmitterService;
 
     // ──────────────── Public submission ────────────────
 
@@ -47,7 +49,14 @@ public class ApplicationService {
         entity.setEmail(dto.getEmail());
         entity.setPhone(dto.getPhone());
         entity.setPosition(dto.getPosition());
-        jobApplicationRepository.save(entity);
+        JobApplication saved = jobApplicationRepository.save(entity);
+
+        sseEmitterService.broadcast(new SseEvent(
+                "NEW_APPLICATION",
+                "Nouvelle candidature",
+                dto.getFirstName() + " " + dto.getLastName() + " — " + dto.getPosition(),
+                saved.getId()
+        ));
 
         try {
             emailService.sendApplicationNotification(dto);
