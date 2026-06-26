@@ -52,22 +52,27 @@ public class AuthService {
     }
 
     public LoginResult refresh(String token) {
-        RefreshToken refreshToken = refreshTokenService.findByToken(token);
-        refreshToken = refreshTokenService.verifyExpiration(refreshToken);
-        if(refreshToken != null){
+       
+            
+            RefreshToken refreshToken = refreshTokenService.findByToken(token);
+            refreshToken = refreshTokenService.verifyExpiration(refreshToken);
+            if(refreshToken != null){
+    
+            
+                UserDetails userDetails = userDetailsService.loadUserByUsername(
+                        refreshToken.getUser().getUsername());
+    
+                // refreshTokenService.deleteByUser(refreshToken.getUser().getUsername());
+                // RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(
+                //         refreshToken.getUser().getUsername());
+    
+                String newAccessToken = jwtService.generateToken(userDetails);
+                return new LoginResult(newAccessToken, "");
+            }
+            
 
         
-            UserDetails userDetails = userDetailsService.loadUserByUsername(
-                    refreshToken.getUser().getUsername());
-
-            // refreshTokenService.deleteByUser(refreshToken.getUser().getUsername());
-            // RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(
-            //         refreshToken.getUser().getUsername());
-
-            String newAccessToken = jwtService.generateToken(userDetails);
-            return new LoginResult(newAccessToken, "");
-        }
-
+        
         return null;
     }
 

@@ -131,13 +131,19 @@ public class AuthController {
         }
 
         // 
-
-        LoginResult result = authService.refresh(refreshTokenId);
-        if(result!=null)
+        try {
+            
+        
+            LoginResult result = authService.refresh(refreshTokenId);
+            // if(result!=null)
             return ResponseEntity.ok(new AuthResponse(result.accessToken()));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            // TODO: handle exception
+        }
             // httpResponse.addHeader(HttpHeaders.SET_COOKIE, buildCookie(result.refreshTokenId()).toString());
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 
     @PostMapping("/logout")
