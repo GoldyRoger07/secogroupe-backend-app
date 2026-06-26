@@ -33,7 +33,6 @@ public class QuoteController {
 // @Valid
     @PostMapping("/public/v1/quotes")
     public ResponseEntity<String> submit(@Valid @RequestBody QuoteRequestDto dto) {
-        System.out.println("Hello World");
         quoteService.submit(dto);
         return ResponseEntity.ok("""
                 {

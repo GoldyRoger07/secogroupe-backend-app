@@ -1,5 +1,7 @@
 package com.secogroupe.app.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -18,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final AuthenticationManager authenticationManager;
     
@@ -38,7 +42,7 @@ public class AuthService {
                     new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         } catch (Exception e) {
             loginHistoryService.record(request.getUsername(), clientIp, device, false);
-            e.printStackTrace();
+            log.warn("Échec de connexion pour l'utilisateur '{}': {}", request.getUsername(), e.getMessage());
             return null;
         }
 
@@ -52,28 +56,18 @@ public class AuthService {
     }
 
     public LoginResult refresh(String token) {
-       
-            
-            RefreshToken refreshToken = refreshTokenService.findByToken(token);
-            refreshToken = refreshTokenService.verifyExpiration(refreshToken);
-            if(refreshToken != null){
-    
-            
-                UserDetails userDetails = userDetailsService.loadUserByUsername(
-                        refreshToken.getUser().getUsername());
-    
-                // refreshTokenService.deleteByUser(refreshToken.getUser().getUsername());
-                // RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(
-                //         refreshToken.getUser().getUsername());
-    
-                String newAccessToken = jwtService.generateToken(userDetails);
-                return new LoginResult(newAccessToken, "");
-            }
-            
+        RefreshToken refreshToken = refreshTokenService.findByToken(token);
+        refreshToken = refreshTokenService.verifyExpiration(refreshToken);
+        if (refreshToken == null) return null;
 
-        
-        
-        return null;
+        String username = refreshToken.getUser().getUsername();
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+        refreshTokenService.deleteByUser(username);
+        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(username);
+
+        String newAccessToken = jwtService.generateToken(userDetails);
+        return new LoginResult(newAccessToken, newRefreshToken.getToken());
     }
 
     public void logout(String username) {

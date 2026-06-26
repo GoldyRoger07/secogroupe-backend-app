@@ -71,7 +71,8 @@ public class DataInitializer {
             Permission deleteApp = upsert("DELETE_APPLICATION", "Supprimer une candidature",   "APPLICATIONS", "DELETE");
 
             // Attendance permissions (présence / pointage QR)
-            Permission readAtt   = upsert("READ_ATTENDANCE",   "Voir les présences et générer le QR", "ATTENDANCE", "READ");
+            Permission createAttCode = upsert("CREATE_ATTENDANCE_CODE", "Générer le code QR de présence", "ATTENDANCE", "CREATE");
+            Permission readAtt   = upsert("READ_ATTENDANCE",   "Voir les présences",                  "ATTENDANCE", "READ");
             Permission updateAtt = upsert("UPDATE_ATTENDANCE", "Configurer les horaires de référence","ATTENDANCE", "UPDATE");
             Permission deleteAtt = upsert("DELETE_ATTENDANCE", "Supprimer une présence",              "ATTENDANCE", "DELETE");
 
@@ -87,7 +88,7 @@ public class DataInitializer {
                     readQuote, updateQuote, deleteQuote,
                     readSession, deleteSession,
                     readApp, updateApp, deleteApp,
-                    readAtt, updateAtt, deleteAtt,
+                    createAttCode, readAtt, updateAtt, deleteAtt,
                     readEmpContact, readEmpSensitive);
 
             // ADMIN role – all permissions
